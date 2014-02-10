@@ -19,7 +19,6 @@
 
 import BaseHTTPServer
 import datetime
-import os
 import sys
 import urlparse
 import webbrowser
@@ -45,39 +44,14 @@ class HubicAuth(object):
     authorize_url = "https://api.hubic.com/oauth/auth"
     base_url = "https://api.hubic.com/1.0/"
 
+    # OAuth credentials -- should not be published, but it's so much easier.
+    # Feel free to replace them with your own!
+    oauth_client_id = "api_hubic_tddVaawJWrZZoQCTNw9psZHociZx1bcw"
+    oauth_client_secret = "4HSTcLmsOrDCbUD8Ld9WBE6XHoP9RKMW7rNMAWSjMUtfu7Oq7iSJadkjRsglFRoR"
+
     def __init__(self, remote):
         self.remote = remote
 
-        self.oauth_client_id = self.oauth_client_secret = None
-        self.service = None
-
-        self.refresh_token = self.access_token = None
-        self.access_token_expiration = DATETIME_MIN
-
-        self.swift_token = self.swift_endpoint = None
-        self.swift_token_expiration = DATETIME_MIN
-
-
-    def get_service(self):
-        """Initialize the OAuth2 service"""
-        if self.service is not None:
-            return self.service
-        self.remote.debug("Initializing the OAuth service")
-
-        # Try to get client IDs from the config
-        self.oauth_client_id, self.oauth_client_secret = self.remote.get_credentials("oauth_client")
-
-        # If this is the initial login, get them from the environment instead
-        if self.oauth_client_id is None or self.oauth_client_secret is None:
-            self.remote.debug("Reading OAuth credentials from the environment")
-            self.oauth_client_id = os.environ.get("HUBIC_CLIENT_ID", None)
-            self.oauth_client_secret = os.environ.get("HUBIC_CLIENT_SECRET", None)
-            if self.oauth_client_id is None or self.oauth_client_secret is None:
-                self.remote.fatal("Could not read the HUBIC_CLIENT_ID and HUBIC_CLIENT_SECRET environment variables")
-
-            self.remote.set_credentials("oauth_client", self.oauth_client_id, self.oauth_client_secret)
-
-        # Create the OAuth service
         self.service = rauth.OAuth2Service(
             name="git-annex-remote",
             client_id=self.oauth_client_id,
@@ -86,13 +60,17 @@ class HubicAuth(object):
             authorize_url=self.authorize_url,
             base_url=self.base_url
         )
-        return self.service
+
+        self.refresh_token = self.access_token = None
+        self.access_token_expiration = DATETIME_MIN
+
+        self.swift_token = self.swift_endpoint = None
+        self.swift_token_expiration = DATETIME_MIN
 
 
     def initialize(self):
         """Perform a first-time OAuth2 authentication"""
         self.remote.debug("Starting first-time OAuth2 authentication")
-        service = self.get_service()
 
         # Is this enableremote or initremote? If enableremote, we already have our credentials...
         _, self.refresh_token = self.remote.get_credentials("token")
@@ -102,7 +80,7 @@ class HubicAuth(object):
             return
 
         # First step: open the authorization URL in a browser
-        url = service.get_authorize_url(redirect_uri=REDIRECT_URI, response_type="code", scope="account.r,credentials.r")
+        url = self.service.get_authorize_url(redirect_uri=REDIRECT_URI, response_type="code", scope="account.r,credentials.r")
         print >>sys.stderr, "\nAn authentication tab should open in your browser. If it does not,"
         print >>sys.stderr, "please go to the following URL:"
         print >>sys.stderr, url
@@ -124,7 +102,7 @@ class HubicAuth(object):
             "redirect_uri": REDIRECT_URI,
             "grant_type": "authorization_code",
         }
-        tokens = service.get_raw_access_token(data=data).json()
+        tokens = self.service.get_raw_access_token(data=data).json()
         self.refresh_token = tokens["refresh_token"]
         self.access_token = tokens["access_token"]
         self.access_token_expiration = now() + datetime.timedelta(seconds=tokens["expires_in"])
@@ -157,8 +135,7 @@ class HubicAuth(object):
         """Get an authenticated OAuth2 session"""
         if self.access_token_expiration <= now():
             self.refresh_access_token()
-        service = self.get_service()
-        return service.get_session(token=self.access_token)
+        return self.service.get_session(token=self.access_token)
 
 
     def refresh_access_token(self):
@@ -167,9 +144,8 @@ class HubicAuth(object):
             "refresh_token": self.refresh_token,
             "grant_type": "refresh_token"
         }
-        service = self.get_service()
         self.remote.debug("Refreshing the OAuth access token")
-        tokens = service.get_raw_access_token(data=data).json()
+        tokens = self.service.get_raw_access_token(data=data).json()
         self.access_token = tokens["access_token"]
         self.access_token_expiration = now() + datetime.timedelta(seconds=tokens["expires_in"])
         self.remote.debug("The current OAuth access token expires in %d seconds" % tokens["expires_in"])
