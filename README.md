@@ -1,10 +1,29 @@
 hubiC remote for git-annex
 ==========================
 
-This lets you store your data managed with git-annex to [hubiC](https://hubic.com/).
+Manage your data with git-annex, store them in your [hubiC](https://hubic.com/)
+account.
 
-**Warning:** this project is very recent. It may cause data loss. It may hurt
-  your children and your cats. It might text your ex. Don't trust it.
+**Warning:** this project is very recent and quite experimental. It may cause
+  data loss. It may hurt your children and your cats. It might cause a nuclear
+  explosion nearby. Don't trust it.
+
+
+Features
+--------
+
+- Lets you store and retrieve data managed with git-annex to your hubiC account
+- Authentication is done using OAuth 2.0: no need for your hubiC password!
+- Data integrity is checked using client-side and server-side MD5 checksums of
+  your files
+- Written in Python 2 (only tested with 2.7, may work with 2.6)
+- Uses the reputable
+  [python-swiftclient](https://github.com/openstack/python-swiftclient) package
+  to communicate with hubiC servers (official Python bindings from the OpenStack
+  project)
+- Uses the new git-annex
+  [special remote protocol](https://git-annex.branchable.com/design/external_special_remote_protocol/)
+- Tested on Linux (x86_64 and armel)
 
 
 Installation
@@ -32,6 +51,13 @@ Installation
     Adjust the value of the `encryption` variable as you like.
 
 You can now use your new remote just like any other git-annex remote.
+
+If you use `git annex enableremote` on a clone of your repository, you'll be
+asked to login again. If this clone happens to be on a browser-less computer
+(VPS, server, NAS...), this won't work. However you can just copy your
+credentials file to that repository: it should be named
+`.git/annex/creds/$UUID-token` where `$UUID` is the UUID of your hubiC remote
+(you can get that with `git annex info`).
 
 Enjoy, and in case of trouble don't hesitate to
 [file an issue](https://github.com/Schnouki/git-annex-remote-hubic/issues) or to
