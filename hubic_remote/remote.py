@@ -17,6 +17,7 @@
 
 """git-annex special remote for hubiC"""
 
+import errno
 import sys
 
 import auth
@@ -41,8 +42,21 @@ class Remote(object):
 
     def send(self, msg):
         """Send a message to git-annex"""
-        self.fout.write("%s\n" % msg)
-        self.fout.flush()
+        def _closed():
+            print >>sys.stderr, "[hubic] git-annex has stopped, exiting."
+            sys.exit(1)
+
+        if self.fout.closed:
+            _closed()
+
+        try:
+            self.fout.write("%s\n" % msg)
+            self.fout.flush()
+        except IOError, exc:
+            if exc.errno == errno.EPIPE:
+                _closed()
+            else:
+                raise exc
 
     def read(self):
         """Read a message from git-annex"""
@@ -62,12 +76,20 @@ class Remote(object):
         sys.exit(1)
 
     def run(self):
-        """Run forever, accepting commands and running stuff"""
+        """Wrapper for the command loop"""
         # Check that we're not running interactively
         if self.fin.isatty() or self.fout.isatty():
             print >>sys.stderr, "Don't run this by yourself! Use git annex initremote type=external externaltype=hubic"
             sys.exit(1)
 
+        # Run the real loop handling keyboard interrupts
+        try:
+            self._run_forever()
+        except KeyboardInterrupt:
+            self.fatal("Interrupted by user")
+
+    def _run_forever(self):
+        """Run forever, accepting commands and running stuff"""
         # Start the communication with git-annex
         self.send("VERSION 1")
 
@@ -117,7 +139,6 @@ class Remote(object):
             # Fallback: unsupported command
             else:
                 self.send("UNSUPPORTED-REQUEST")
-
 
     # Commands
     def get_config(self, name):

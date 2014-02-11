@@ -108,6 +108,9 @@ class SwiftConnection(object):
             with ProgressFile(self.remote, filename, "rb") as contents:
                 self.conn.put_object(self.container, path, contents, etag=md5)
             self.remote.send("TRANSFER-SUCCESS STORE " + key)
+        except KeyboardInterrupt:
+            self.remote.send("TRANSFER-FAILURE RETRIEVE %s Interrupted by user" % key)
+            raise
         except Exception, exc:
             self.remote.send("TRANSFER-FAILURE STORE %s %s" % (key, str(exc)))
 
@@ -122,8 +125,12 @@ class SwiftConnection(object):
                 for chunk in body:
                     dst.write(chunk)
                 dst.flush()
+        except KeyboardInterrupt:
+            self.remote.send("TRANSFER-FAILURE RETRIEVE %s Interrupted by user" % key)
+            raise
         except Exception, exc:
             self.remote.send("TRANSFER-FAILURE RETRIEVE %s %s" % (key, str(exc)))
+            return
 
         md5 = md5sum(filename)
         if md5 != head['etag']:
@@ -140,6 +147,9 @@ class SwiftConnection(object):
         try:
             self.conn.head_object("default", path)
             self.remote.send("CHECKPRESENT-SUCCESS " + key)
+        except KeyboardInterrupt:
+            self.remote.send("CHECKPRESENT-UNKNOWN %s Interrupted by user" % key)
+            raise
         except ClientException, exc:
             if exc.http_status == 404:
                 self.remote.send("CHECKPRESENT-FAILURE " + key)
@@ -155,5 +165,8 @@ class SwiftConnection(object):
         try:
             self.conn.delete_object(self.container, path)
             self.remote.send("REMOVE-SUCCESS " + key)
+        except KeyboardInterrupt:
+            self.remote.send("REMOVE-FAILURE %s Interrupted by user" % key)
+            raise
         except Exception, exc:
             self.remote.send("REMOVE-FAILURE %s %s" % (key, str(exc)))
