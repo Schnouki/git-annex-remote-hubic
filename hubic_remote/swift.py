@@ -53,10 +53,13 @@ class ProgressFile(file):
 
 class SwiftConnection(object):
     """Swift connection to hubiC"""
-    container = "default"
 
     def __init__(self, remote):
         self.remote = remote
+
+        self.container = remote.get_config("hubic_container")
+        if self.container is None:
+            self.container = "default"
 
         self.path = remote.get_config("hubic_path")
         if self.path is None:
@@ -72,30 +75,38 @@ class SwiftConnection(object):
 
     def get_path(self, key):
         """Get the full path for storing a key"""
-        dirhash = self.remote.dirhash(key)
-        return os.path.join(self.path, dirhash, key)
+        # Only use dirhash in the "default" container
+        if self.container == "default":
+            dirhash = self.remote.dirhash(key)
+            return os.path.join(self.path, dirhash, key)
+        else:
+            return os.path.join(self.path, key)
 
     def ensure_directory_exists(self, path):
         """Makes sure the directory exists, by creating it if necessary"""
         self.remote.debug("ensure directory exists '%s'" % path)
-        if path == "":
-            return True
 
-        try:
-            status = self.conn.head_object(self.container, path)
-            if status['content-type'] != 'application/directory':
-                self.remote.fatal('Directory %s has type %s' % (path, status['content-type']))
-        except ClientException, exc:
-            if exc.http_status != 404:
-                return False
+        # If the container is "default", we need to create application/directory
+        # objects so that directories are visible in the web UI. But in
+        # non-default containers, we don't care about that: we only need to make
+        # sure that the container itself exists.
+        if self.container != "default":
+            self.conn.put_container(self.container)
+            return
 
-            # The directory does not exist: create it recursively
-            parent_dir = os.path.dirname(path)
-            if parent_dir != "":
-                 if not self.ensure_directory_exists(parent_dir):
-                     return False
-            self.conn.put_object(self.container, path, None, content_type="application/directory")
-        return True
+        # In the "default" container, check for directories and subdirectories,
+        # and create them if needed.
+        path_components = path.split("/")
+        for idx in range(len(path_components)):
+            path = "/".join(path_components[:idx])
+
+            try:
+                status = self.conn.head_object(self.container, "path")
+                if status["content-type"] != "application/directory":
+                    self.remote.fatal("Directory %s has type %s" % (path, status["content-type"]))
+            except ClientException, exc:
+                if exc.http_status != 404:
+                    self.conn.put_object(self.container, path, None, content_type="application/directory")
 
 
     def store(self, key, filename):
@@ -145,7 +156,7 @@ class SwiftConnection(object):
         path = self.get_path(key)
 
         try:
-            self.conn.head_object("default", path)
+            self.conn.head_object(self.container, path)
             self.remote.send("CHECKPRESENT-SUCCESS " + key)
         except KeyboardInterrupt:
             self.remote.send("CHECKPRESENT-UNKNOWN %s Interrupted by user" % key)
