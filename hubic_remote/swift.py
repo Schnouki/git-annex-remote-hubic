@@ -53,25 +53,51 @@ class ProgressFile(file):
 
 class SwiftConnection(object):
     """Swift connection to hubiC"""
+    cache = {
+        "container": None,
+        "path": None,
+        "conn": None,
+        "last_creds": None,
+    }
 
     def __init__(self, remote):
         self.remote = remote
 
-        self.container = remote.get_config("hubic_container")
+        # Reuse everything as much as possible. Mostly interesting for the
+        # connection object, to avoid re-opening HTTP connections and use
+        # pipelining instead.
+        self.container = SwiftConnection.cache["container"]
+        self.path = SwiftConnection.cache["path"]
+        self.conn = SwiftConnection.cache["conn"]
+        last_creds = SwiftConnection.cache["last_creds"]
+
         if self.container is None:
-            self.container = "default"
+            self.container = remote.get_config("hubic_container")
+            if self.container is None:
+                self.container = "default"
 
-        self.path = remote.get_config("hubic_path")
         if self.path is None:
-            self.path = ""
+            self.path = remote.get_config("hubic_path")
+            if self.path is None:
+                self.path = ""
 
-        endpoint, token = remote.get_swift_credentials()
-        options = {
-            "auth_token": token,
-            "object_storage_url": endpoint,
+        creds = remote.get_swift_credentials()
+        if last_creds != creds:
+            endpoint, token = creds
+            options = {
+                "auth_token": token,
+                "object_storage_url": endpoint,
+            }
+            remote.debug("Swift credentials: " + str(options))
+            self.conn = swiftclient.client.Connection(os_options=options, auth_version=2)
+
+        # Store new things in the cache
+        SwiftConnection.cache = {
+            "container": self.container,
+            "path": self.path,
+            "conn": self.conn,
+            "last_creds": creds,
         }
-        self.remote.debug("Swift credentials: " + str(options))
-        self.conn = swiftclient.client.Connection(os_options=options, auth_version=2)
 
     def get_path(self, key):
         """Get the full path for storing a key"""
