@@ -29,7 +29,7 @@ setup(name="git-annex-remote-hubic",
       packages=find_packages(),
       install_requires=[
           "python-dateutil",
-          "python-swiftclient",
+          "python-swiftclient==1.9.0",
           "rauth>=0.6",
       ],
       entry_points={
