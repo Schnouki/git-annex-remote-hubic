@@ -44,11 +44,25 @@ Installation
 4.  Go to a repository you manage with git-annex, and initialize your new remote
     using the following commands as a starting point:
 
-        git annex initremote my-hubic-remote type=external externaltype=hubic encryption=shared hubic_path=annex/dirname
+        git annex initremote my-hubic-remote type=external externaltype=hubic encryption=shared hubic_container=annex hubic_path=path/to/data embedcreds=no
 
-    where `my-hubic-remote` is the name of your remote, and `hubic_path` is the
-    directory in your hubiC account where your annexed data will be stored.
-    Adjust the value of the `encryption` variable as you like.
+    - `my-hubic-remote` is the name of your remote
+    - `hubic_container` is the name of the Swift container used to store your
+      data. If you don't specify anything, the name "`default`" will be used,
+      which is the name of the container used by the hubiC desktop client and
+      shown in the web interface. Therefore it is *not* recommended to use the
+      "`default`" container to store your annexed data, as they will be synced
+      to your computer if you use the desktop client.
+    - `hubic_path` is the directory where your annexed data will be stored in
+       the container your chose.
+    - `embedcreds` controls whether your access token shall be stored in the git
+      repository. If set to `yes`, anyone with access to your repository can get
+      full access to all your hubiC data, so don't set it to `yes` unless you
+      really trust the machines where your repository is stored and the people
+      who have access to it.
+    - `encryption` is used to control whether your data will be encrypted on the
+      remote, just like with
+      [any other remote](http://git-annex.branchable.com/encryption/).
 
 You can now use your new remote just like any other git-annex remote.
 
@@ -62,6 +76,34 @@ credentials file to that repository: it should be named
 Enjoy, and in case of trouble don't hesitate to
 [file an issue](https://github.com/Schnouki/git-annex-remote-hubic/issues) or to
 [send me an e-mail](mailto:schnouki+garh@schnouki.net).
+
+
+Upgrade
+-------
+
+The very first version of this remote, when published to GitHub, only supported
+storing data in the default container. However doing so is **not recommended**
+as data stored in that container will be synced to your computer if you use the
+desktop client.
+
+So if you started using this remote before the `hubic_container` option was
+available, I strongly encourage you to migrate your data out of your default
+container. To do so, you can use the `git-annex-remote-hubic-migrate` script
+provided with this package:
+
+    git-annex-remote-hubic-migrate old_path/to/data new_container_name new/path/to/data
+
+This will do server-side copies from "`default`" to "`new_container_name`",
+without needing to re-upload everything. Once the copy is complete, you should change your remote config:
+
+    git annex enableremote my-hubic-remote hubic_container=new_container_name hubic_path=new/path/to/data
+
+You can then run `git annex fsck -F my-remote-hubic` to check that all your data
+are still there. Once it succeeds, you may delete the old data by hand (for
+example from the webclient), or by running the same script again with the
+`--move` option:
+
+    git-annex-remote-hubic-migrate --move old_path/to/data new_container_name new/path/to/data
 
 
 License
