@@ -105,7 +105,6 @@ class Remote(object):
             command = line[0]
 
             # Boring commands -- reply immediately
-
             if command == "GETCOST":
                 self.send("COST %d" % REMOTE_COST)
             elif command == "GETAVAILABILITY":
@@ -125,8 +124,10 @@ class Remote(object):
                 subcommand, key, filename = line[1].split(None, 2)
                 if subcommand == "STORE":
                     conn.store(key, filename)
-                else:
+                elif subcommand == "RETRIEVE":
                     conn.retrieve(key, filename)
+                else:
+                    self.send("UNSUPPORTED-REQUEST")
 
             elif command == "CHECKPRESENT":
                 conn = swift.SwiftConnection(self)
