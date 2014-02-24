@@ -73,14 +73,15 @@ class HubicAuth(object):
         self.remote.debug("Starting first-time OAuth2 authentication")
 
         # Is this enableremote or initremote? If enableremote, we already have our credentials...
-        _, self.refresh_token = self.remote.get_credentials("token")
+        if self.refresh_token is None:
+            self.refresh_token = self.get_refresh_token()
         if self.refresh_token is not None:
             self.refresh_access_token()
             self.remote.send("INITREMOTE-SUCCESS")
             return
 
         # First step: open the authorization URL in a browser
-        url = self.service.get_authorize_url(redirect_uri=REDIRECT_URI, response_type="code", scope="account.r,credentials.r")
+        url = self.service.get_authorize_url(redirect_uri=REDIRECT_URI, response_type="code", scope="credentials.r")
         print >>sys.stderr, "\nAn authentication tab should open in your browser. If it does not,"
         print >>sys.stderr, "please go to the following URL:"
         print >>sys.stderr, url
@@ -108,13 +109,8 @@ class HubicAuth(object):
         self.access_token_expiration = now() + datetime.timedelta(seconds=tokens["expires_in"])
         self.remote.debug("The current OAuth access token expires in %d seconds" % tokens["expires_in"])
 
-        # Finally get some informations about the account, just for fun
-        sess = self.get_session()
-        data = sess.get("account").json()
-        email = data['email']
-
-        # Store the credentials safely
-        self.remote.set_credentials("token", email, self.refresh_token)
+        # Store the credentials
+        self.set_refresh_token(self.refresh_token)
 
         # And tell that we're done
         self.remote.send("INITREMOTE-SUCCESS")
@@ -123,12 +119,45 @@ class HubicAuth(object):
     def prepare(self):
         """Prepare for OAuth2 access"""
         self.remote.debug("Preparing the remote")
-        _, self.refresh_token = self.remote.get_credentials("token")
+        self.refresh_token = self.get_refresh_token()
         if self.refresh_token is None:
             self.remote.send("PREPARE-FAILURE No credentials found")
 
         self.refresh_swift_token()
         self.remote.send("PREPARE-SUCCESS")
+
+
+    def get_embed_creds(self):
+        """Get the embedcreds config value as a boolean"""
+        embed_creds = self.remote.get_config("embedcreds")
+        if embed_creds is None:
+            return False
+        return  embed_creds.lower() in ("yes", "true", "1")
+
+
+    def get_refresh_token(self):
+        """Get the OAuth2 refresh token from git-annex"""
+        token = None
+        if self.get_embed_creds():
+            # Try from config first
+            token = self.remote.get_config("hubic_refresh_token")
+            if token is None:
+                # If not found in config, try from credentials. Useful when
+                # using "enableremote embedcreds=yes" after the initial setup.
+                _, token = self.remote.get_credentials("token")
+                if token is not None:
+                    self.remote.set_config("hubic_refresh_token", token)
+        else:
+            _, token = self.remote.get_credentials("token")
+        return token
+
+
+    def set_refresh_token(self, token):
+        """Store the OAuth2 refresh token in git-annex"""
+        if self.get_embed_creds():
+            self.remote.set_config("hubic_refresh_token", token)
+        else:
+            self.remote.set_credentials("token", "hubic", token)
 
 
     def get_session(self):
