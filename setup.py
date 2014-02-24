@@ -35,6 +35,7 @@ setup(name="git-annex-remote-hubic",
       entry_points={
           "console_scripts": [
               "git-annex-remote-hubic = hubic_remote.main:main",
+              "git-annex-remote-hubic-migrate = hubic_remote.migrate:main",
           ],
       },
       classifiers=[
