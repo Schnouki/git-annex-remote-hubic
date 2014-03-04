@@ -26,15 +26,6 @@ import swiftclient.client
 from swiftclient.exceptions import ClientException
 
 
-def md5sum(filename):
-    """Compute the MD5 checksum of a file"""
-    md5 = hashlib.md5()
-    with open(filename, "rb") as src:
-        for chunk in iter(functools.partial(src.read, 65536), ""):
-            md5.update(chunk)
-    return md5.hexdigest()
-
-
 class ProgressFile(file):
     """File wrapper that writes read/write progress to the remote"""
     def __init__(self, remote, *args, **kwds):
@@ -137,13 +128,18 @@ class SwiftConnection(object):
 
     def store(self, key, filename):
         """Store filename to key"""
-        md5 = md5sum(filename)
+        md5 = hashlib.md5()
+        with open(filename, "rb") as src:
+            for chunk in iter(functools.partial(src.read, 65536), ""):
+                md5.update(chunk)
+        md5_digest = md5.hexdigest()
+
         path = self.get_path(key)
         self.ensure_directory_exists(os.path.dirname(path))
 
         try:
             with ProgressFile(self.remote, filename, "rb") as contents:
-                self.conn.put_object(self.container, path, contents, etag=md5)
+                self.conn.put_object(self.container, path, contents, etag=md5_digest)
             self.remote.send("TRANSFER-SUCCESS STORE " + key)
         except KeyboardInterrupt:
             self.remote.send("TRANSFER-FAILURE STORE %s Interrupted by user" % key)
@@ -154,6 +150,7 @@ class SwiftConnection(object):
 
     def retrieve(self, key, filename):
         """Retrieve key to filename"""
+        md5 = hashlib.md5()
         path = self.get_path(key)
 
         try:
@@ -161,6 +158,7 @@ class SwiftConnection(object):
             with ProgressFile(self.remote, filename, "wb") as dst:
                 for chunk in body:
                     dst.write(chunk)
+                    md5.update(chunk)
                 dst.flush()
         except KeyboardInterrupt:
             self.remote.send("TRANSFER-FAILURE RETRIEVE %s Interrupted by user" % key)
@@ -169,8 +167,8 @@ class SwiftConnection(object):
             self.remote.send("TRANSFER-FAILURE RETRIEVE %s %s" % (key, str(exc)))
             return
 
-        md5 = md5sum(filename)
-        if md5 != head['etag']:
+        md5_digest = md5.hexdigest()
+        if md5_digest != head['etag']:
             os.remove(filename)
             self.remote.send("TRANSFER-FAILURE RETRIEVE %s Checksum mismatch" % key)
         else:
