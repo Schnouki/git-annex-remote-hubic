@@ -21,6 +21,11 @@ import argparse
 import os.path
 import sys
 
+try:
+    from concurrent import futures
+    enable_multithreading = True
+except ImportError:
+    enable_multithreading = False
 import swiftclient.client
 
 import auth
@@ -44,6 +49,24 @@ class PseudoRemote(object):
     def send(self, *args): pass
     def set_config(self, *args): pass
     def set_credentials(self, *args): pass
+
+
+def migrate(args, conn, target_files, idx, name, etag):
+    """Move one file to another container"""
+    source_path = "/" + os.path.join("default", name)
+    target_path = os.path.join(args.target_path, os.path.basename(name))
+
+    # First check for the target
+    if target_path not in target_files or target_files[target_path] != etag:
+        nice_target_path = "/" + args.target_container + "/" + target_path
+        print idx, source_path, "-->", nice_target_path
+        conn.put_object(args.target_container, target_path, contents=None,
+                        headers={"X-Copy-From": source_path,
+                                 "Content-Length": 0})
+
+    if args.move:
+        print idx, "deleting", source_path
+        conn.delete_object("default", name)
 
 
 def main():
@@ -96,21 +119,19 @@ def main():
                     if obj["content_type"] != "application/directory"}
 
     # Start copying files
-    for idx, (name, etag) in enumerate(files):
-        source_path = "/" + os.path.join("default", name)
-        target_path = os.path.join(args.target_path, os.path.basename(name))
+    if enable_multithreading:
+        with futures.ThreadPoolExecutor(max_workers=10) as executor:
+            tasks = {executor.submit(migrate, args, conn, target_files, idx+1, name, etag): idx+1
+                     for idx, (name, etag) in enumerate(files)}
 
-        # First check for the target
-        if target_path not in target_files or target_files[target_path] != etag:
-            nice_target_path = "/" + args.target_container + "/" + target_path
-            print (idx+1), source_path, "-->", nice_target_path
-            conn.put_object(args.target_container, target_path, contents=None,
-                            headers={"X-Copy-From": source_path,
-                                     "Content-Length": 0})
+            for future in futures.as_completed(tasks):
+                idx = tasks[future]
+                if future.exception() is not None:
+                    print '%d generated an exception: %s' % (idx, future.exception())
 
-        if args.move:
-            print (idx+1), "deleting", source_path
-            conn.delete_object("default", name)
+    else:
+        for idx, (name, etag) in enumerate(files):
+            migrate(args, conn, target_files, idx+1, name, etag)
 
 
 if __name__ == "__main__":

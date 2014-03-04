@@ -32,6 +32,9 @@ setup(name="git-annex-remote-hubic",
           "python-swiftclient==1.9.0",
           "rauth>=0.6",
       ],
+      extras_require = {
+          "multithread":  ["futures"],
+      },
       entry_points={
           "console_scripts": [
               "git-annex-remote-hubic = hubic_remote.main:main",
