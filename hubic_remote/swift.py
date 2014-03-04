@@ -146,7 +146,7 @@ class SwiftConnection(object):
                 self.conn.put_object(self.container, path, contents, etag=md5)
             self.remote.send("TRANSFER-SUCCESS STORE " + key)
         except KeyboardInterrupt:
-            self.remote.send("TRANSFER-FAILURE RETRIEVE %s Interrupted by user" % key)
+            self.remote.send("TRANSFER-FAILURE STORE %s Interrupted by user" % key)
             raise
         except Exception, exc:
             self.remote.send("TRANSFER-FAILURE STORE %s %s" % (key, str(exc)))
