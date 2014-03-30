@@ -38,7 +38,7 @@ Installation
 
 3.  Install the package:
 
-        python2 setup.py --user install
+        python2 setup.py install --user
         # Use python on outdated distros such as Debian or Ubuntu
 
 4.  Go to a repository you manage with git-annex, and initialize your new remote
