@@ -203,5 +203,8 @@ class SwiftConnection(object):
         except KeyboardInterrupt:
             self.remote.send("REMOVE-FAILURE %s Interrupted by user" % key)
             raise
-        except Exception, exc:
-            self.remote.send("REMOVE-FAILURE %s %s" % (key, str(exc)))
+        except ClientException, exc:
+            if exc.http_status == 404:
+                self.remote.send("REMOVE-SUCCESS " + key)
+            else:
+                self.remote.send("REMOVE-FAILURE %s %s" % (key, str(exc)))
