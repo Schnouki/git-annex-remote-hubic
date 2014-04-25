@@ -281,10 +281,31 @@ class SwiftConnection(object):
     def check(self, key):
         """Check if key is present"""
         path = self.get_path(key)
+        nb_chunks = None
+        chunk_idx = 0
 
         try:
-            self.conn.head_object(self.container, path)
-            self.remote.send("CHECKPRESENT-SUCCESS " + key)
+            while path is not None:
+                chunk_idx += 1
+                self.remote.debug("Checking chunk %d" % chunk_idx)
+                headers = self.conn.head_object(self.container, path)
+
+                # Check chunk metadata
+                meta_nb_chunks = int(headers.get("x-object-meta-annex-chunks", 1))
+                if nb_chunks is None:
+                    nb_chunks = meta_nb_chunks
+                elif nb_chunks != meta_nb_chunks:
+                    raise ValueError("Inconsistent number of chunks: %d != %d (%d)"
+                                     % (nb_chunks, meta_nb_chunks, chunk_idx))
+
+                # Path of the next chunk
+                path = headers.get("x-object-meta-annex-next-chunk", None)
+
+            if chunk_idx == nb_chunks:
+                self.remote.send("CHECKPRESENT-SUCCESS " + key)
+            else:
+                self.remote.send("CHECKPRESENT-FAILURE %s Found %d chunks instead of %d"
+                                 % (key, chunk_idx, nb_chunks))
         except KeyboardInterrupt:
             self.remote.send("CHECKPRESENT-UNKNOWN %s Interrupted by user" % key)
             raise
@@ -298,16 +319,38 @@ class SwiftConnection(object):
     def remove(self, key):
         """Remove key"""
         path = self.get_path(key)
+        chunks = []
 
         # TODO: remove empty directories
         try:
-            self.conn.delete_object(self.container, path)
+            # List existing chunks
+            while path is not None:
+                self.remote.debug("Checking chunk %d" % (1 + len(chunks)))
+                try:
+                    headers = self.conn.head_object(self.container, path)
+                except ClientException, exc:
+                    if exc.http_status == 404:
+                        break
+                    else:
+                        raise exc
+                chunks.append(path)
+                path = headers.get("x-object-meta-annex-next-chunk", None)
+
+            # Remove chunks. Do it in reverse order so that we can try again if
+            # this is interrupted.
+            for idx, chunk in enumerate(reversed(chunks)):
+                self.remote.debug("Removing chunk %d" % (len(chunks) - idx))
+                try:
+                    self.conn.delete_object(self.container, chunk)
+                except ClientException, exc:
+                    if exc.http_status == 404:
+                        continue
+                    else:
+                        raise exc
+
             self.remote.send("REMOVE-SUCCESS " + key)
         except KeyboardInterrupt:
             self.remote.send("REMOVE-FAILURE %s Interrupted by user" % key)
             raise
-        except ClientException, exc:
-            if exc.http_status == 404:
-                self.remote.send("REMOVE-SUCCESS " + key)
-            else:
-                self.remote.send("REMOVE-FAILURE %s %s" % (key, str(exc)))
+        except Exception, exc:
+            self.remote.send("REMOVE-FAILURE %s %s" % (key, str(exc)))
