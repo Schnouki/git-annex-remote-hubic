@@ -80,6 +80,8 @@ class SwiftConnection(object):
                 "object_storage_url": endpoint,
             }
             remote.debug("Swift credentials: " + str(options))
+            remote.debug('export OS_AUTH_TOKEN="%(auth_token)s"; '
+                         'export OS_STORAGE_URL="%(object_storage_url)s"' % options)
             self.conn = swiftclient.client.Connection(os_options=options, auth_version=2)
 
         # Store new things in the cache
