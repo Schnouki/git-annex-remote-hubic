@@ -192,9 +192,14 @@ class HubicAuth(object):
         self.remote.debug("The current OpenStack access token expires in %d seconds" % delta.total_seconds())
 
 
+    def swift_token_expired(self):
+        """Check if the current OpenStack access token has expired"""
+        return self.swift_token_expiration <= now()
+
+
     def get_swift_credentials(self):
         """Get a valid OpenStack endpoint and access token"""
-        if self.swift_token_expiration <= now():
+        if self.swift_token_expired():
             self.refresh_swift_token()
         return (self.swift_endpoint, self.swift_token)
 

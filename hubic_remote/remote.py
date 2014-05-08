@@ -186,3 +186,7 @@ class Remote(object):
     def get_swift_credentials(self):
         """Get SWIFT credientials using the auth module"""
         return self.auth.get_swift_credentials()
+
+    def swift_token_expired(self):
+        """Check if the SWIFT credentials have expired using the auth module"""
+        return self.auth.swift_token_expired()

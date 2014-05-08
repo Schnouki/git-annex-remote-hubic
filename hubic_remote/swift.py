@@ -83,7 +83,6 @@ class SwiftConnection(object):
         self.container = SwiftConnection.cache["container"]
         self.path = SwiftConnection.cache["path"]
         self.conn = SwiftConnection.cache["conn"]
-        last_creds = SwiftConnection.cache["last_creds"]
 
         if self.container is None:
             self.container = remote.get_config("hubic_container")
@@ -101,16 +100,21 @@ class SwiftConnection(object):
         else:
             self.chunk_size = int(self.chunk_size)
 
-        creds = remote.get_swift_credentials()
+        self.renew_connection()
+
+    def renew_connection(self):
+        """Start a new Swift connection, renewing credentials if necessary"""
+        last_creds = SwiftConnection.cache["last_creds"]
+        creds = self.remote.get_swift_credentials()
         if last_creds != creds:
             endpoint, token = creds
             options = {
                 "auth_token": token,
                 "object_storage_url": endpoint,
             }
-            remote.debug("Swift credentials: " + str(options))
-            remote.debug('export OS_AUTH_TOKEN="%(auth_token)s"; '
-                         'export OS_STORAGE_URL="%(object_storage_url)s"' % options)
+            self.remote.debug("Swift credentials: " + str(options))
+            self.remote.debug('export OS_AUTH_TOKEN="%(auth_token)s"; '
+                              'export OS_STORAGE_URL="%(object_storage_url)s"' % options)
             self.conn = swiftclient.client.Connection(os_options=options, auth_version=2)
 
         # Store new things in the cache
@@ -197,10 +201,25 @@ class SwiftConnection(object):
                     if idx < len(chunks) - 1:
                         headers["x-object-meta-annex-next-chunk"] = "%s/chunk%04d" % (path, idx + 1)
 
-                    self.remote.debug("Sending chunk %d/%d" % (idx + 1, len(chunks)))
-                    self.conn.put_object(self.container, this_path,
-                                         contents=contents, content_length=chunk["size"],
-                                         etag=chunk["md5_digest"], headers=headers)
+                    # Try 3 times, in case of expiring OpenStack tokens
+                    for nb_try in range(3):
+                        self.remote.debug("Sending chunk %d/%d, try %d"
+                                          % (idx + 1, len(chunks), nb_try + 1))
+                        contents.seek(chunk["offset"])
+                        try:
+                            self.conn.put_object(self.container, this_path,
+                                                 contents=contents, content_length=chunk["size"],
+                                                 etag=chunk["md5_digest"], headers=headers)
+                        except ClientException, exc:
+                            if exc.http_status == 401 and self.remote.swift_token_expired():
+                                # Retry!
+                                self.renew_connection()
+                                continue
+                            else:
+                                raise exc
+
+                        # Chunk upload successful: break the retry loop
+                        break
 
             self.remote.send("TRANSFER-SUCCESS STORE " + key)
 
