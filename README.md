@@ -106,6 +106,23 @@ example from the webclient), or by running the same script again with the
     git-annex-remote-hubic-migrate --move old_path/to/data new_container_name new/path/to/data
 
 
+Hacking
+-------
+
+If you want to hack on this remote, feel free :)
+
+- Use `git annex --debug`. It saves lifes.
+- There are a few tests in the `test` directory; they only cover common use
+  cases.
+- If you wish to use the `swift` command to access your hubiC account, you can
+  have the remote dump the needed credentials to a file using an environment
+  variable:
+
+        export GIT_ANNEX_HUBIC_AUTH_FILE=/path/to/auth/file
+        source /path/to/auth/file
+        swift list
+
+
 License
 -------
 

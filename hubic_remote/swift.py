@@ -115,6 +115,13 @@ class SwiftConnection(object):
             self.remote.debug("Swift credentials: " + str(options))
             self.remote.debug('export OS_AUTH_TOKEN="%(auth_token)s"; '
                               'export OS_STORAGE_URL="%(object_storage_url)s"' % options)
+
+            dump_filename = os.getenv("GIT_ANNEX_HUBIC_AUTH_FILE")
+            if dump_filename is not None:
+                with open(dump_filename, "w") as dump:
+                    dump.write('export OS_AUTH_TOKEN="%(auth_token)s"\n'
+                               'export OS_STORAGE_URL="%(object_storage_url)s"\n' % options)
+
             self.conn = swiftclient.client.Connection(os_options=options, auth_version=2)
 
         # Store new things in the cache
