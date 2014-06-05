@@ -3,8 +3,8 @@ setup() {
     cd repo
 }
 teardown() {
-    unset GIT_ANNEX_HUBIC_AUTH_FILE OS_AUTH_TOKEN OS_STORAGE_URL
     git reset --hard master >&2
+    git clean --force >&2
     cd ..
 }
 
@@ -76,20 +76,3 @@ teardown() {
     run git annex drop $name --from remote-hubic
     [ "$status" -eq 0 ]
 }
-
-@test "exporting Swift credentials to a file" {
-    name=$(mktemp test.XXXXXX)
-    auth=$(mktemp auth.XXXXXX)
-    dd if=/dev/urandom of=$name bs=1 count=100 >&2
-    git annex add $name >&2
-
-    export GIT_ANNEX_HUBIC_AUTH_FILE=$auth
-    run git annex copy $name --to remote-hubic
-    [ "$status" -eq 0 ]
-
-    source $auth
-    run swift stat
-    [ "$status" -eq 0 ]
-}
-
-# TODO: act directly on hubic to test error cases
