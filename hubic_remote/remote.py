@@ -119,9 +119,13 @@ class Remote(object):
 
             # File transfer commands -- from swift.py
             elif command == "TRANSFER":
-                conn = swift.SwiftConnection(self)
-
                 subcommand, key, filename = line[1].split(None, 2)
+                try:
+                    conn = swift.SwiftConnection(self)
+                except Exception, exc:
+                    self.send("TRANSFER-%s FAILURE %s %s" % (subcommand, key, str(exc)))
+                    continue
+
                 if subcommand == "STORE":
                     conn.store(key, filename)
                 elif subcommand == "RETRIEVE":

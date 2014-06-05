@@ -103,7 +103,11 @@ class HubicAuth(object):
             "redirect_uri": REDIRECT_URI,
             "grant_type": "authorization_code",
         }
-        tokens = self.service.get_raw_access_token(data=data).json()
+        try:
+            tokens = self.service.get_raw_access_token(data=data).json()
+        except Exception, exc:
+            self.remote.send("INITREMOTE-FAILURE " + str(exc))
+            return
         self.refresh_token = tokens["refresh_token"]
         self.access_token = tokens["access_token"]
         self.access_token_expiration = now() + datetime.timedelta(seconds=tokens["expires_in"])
@@ -123,7 +127,11 @@ class HubicAuth(object):
         if self.refresh_token is None:
             self.remote.send("PREPARE-FAILURE No credentials found")
 
-        self.refresh_swift_token()
+        try:
+            self.refresh_swift_token()
+        except Exception, exc:
+            self.remote.send("PREPARE-FAILURE " + str(exc))
+            return
         self.remote.send("PREPARE-SUCCESS")
 
 
