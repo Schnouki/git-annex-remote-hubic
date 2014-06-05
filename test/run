@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -e
+
+DIR=$(dirname $0)
+BATS=$DIR/bats/bin/bats
+
+if [ ! -d $DIR/repo ]; then
+    $DIR/init-repo
+fi
+
+exec $BATS $DIR/hubic.bats
