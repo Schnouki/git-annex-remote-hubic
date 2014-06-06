@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+set -e
+
+DIR=$(dirname $0)
+
+if [ -d $DIR/repo ]; then
+    echo "$DIR/repo already exists"
+    exit 1
+fi
+
+# Create a test repository
+mkdir $DIR/repo
+cd $DIR/repo
+git init
+
+# Initialize git-annex and a hubiC remote
+git annex init "Test repo"
+git annex initremote remote-hubic type=external externaltype=hubic encryption=shared hubic_container=test_container hubic_path=1 embedcreds=yes hubic_chunk_size=1024
+
+# Add a commit
+touch empty-file
+git add empty-file
+git commit -m "Initial commit"

@@ -18,27 +18,23 @@
 """Migrate hubiC data out of the default container"""
 
 import argparse
+from concurrent import futures
 import os.path
 import sys
 
-try:
-    from concurrent import futures
-    enable_multithreading = True
-except ImportError:
-    enable_multithreading = False
 import swiftclient.client
 
-import auth
+from . import auth
 
 
 class PseudoRemote(object):
     """Object that mimics a normal Remote"""
 
     def debug(self, msg):
-        print >>sys.stderr, msg
+        print(msg, file=sys.stderr)
 
     def fatal(self, msg):
-        print >>sys.stderr, msg
+        print(msg, file=sys.stderr)
         sys.exit(1)
 
     def get_config(self, *args):
@@ -59,13 +55,13 @@ def migrate(args, conn, target_files, idx, name, etag):
     # First check for the target
     if target_path not in target_files or target_files[target_path] != etag:
         nice_target_path = "/" + args.target_container + "/" + target_path
-        print idx, source_path, "-->", nice_target_path
+        print(idx, source_path, "-->", nice_target_path)
         conn.put_object(args.target_container, target_path, contents=None,
                         headers={"X-Copy-From": source_path,
                                  "Content-Length": 0})
 
     if args.move:
-        print idx, "deleting", source_path
+        print(idx, "deleting", source_path)
         conn.delete_object("default", name)
 
 
@@ -89,7 +85,7 @@ def main():
     hubic_auth = auth.HubicAuth(remote)
     hubic_auth.refresh_token = args.token
     hubic_auth.initialize()
-    print "OAuth2 credentials: token=%s" % hubic_auth.refresh_token
+    print("OAuth2 credentials: token=%s" % hubic_auth.refresh_token)
 
     # Init Swift connection
     endpoint, token = hubic_auth.get_swift_credentials()
@@ -97,7 +93,7 @@ def main():
         "auth_token": token,
         "object_storage_url": endpoint,
     }
-    print "Swift credentials: token=%s, endpoint=%s" % (token, endpoint)
+    print("Swift credentials: token=%s, endpoint=%s" % (token, endpoint))
     conn = swiftclient.client.Connection(os_options=options, auth_version=2)
 
     # List objects in the source directory
@@ -107,7 +103,7 @@ def main():
     # Remove directories
     files = [(obj["name"], obj["hash"]) for obj in objects
              if obj["content_type"] != "application/directory"]
-    print "Processing %d files..." % len(files)
+    print("Processing %d files..." % len(files))
 
     # Create the target container
     conn.put_container(args.target_container)
@@ -119,19 +115,14 @@ def main():
                     if obj["content_type"] != "application/directory"}
 
     # Start copying files
-    if enable_multithreading:
-        with futures.ThreadPoolExecutor(max_workers=10) as executor:
-            tasks = {executor.submit(migrate, args, conn, target_files, idx+1, name, etag): idx+1
-                     for idx, (name, etag) in enumerate(files)}
+    with futures.ThreadPoolExecutor(max_workers=10) as executor:
+        tasks = {executor.submit(migrate, args, conn, target_files, idx+1, name, etag): idx+1
+                 for idx, (name, etag) in enumerate(files)}
 
-            for future in futures.as_completed(tasks):
-                idx = tasks[future]
-                if future.exception() is not None:
-                    print '%d generated an exception: %s' % (idx, future.exception())
-
-    else:
-        for idx, (name, etag) in enumerate(files):
-            migrate(args, conn, target_files, idx+1, name, etag)
+        for future in futures.as_completed(tasks):
+            idx = tasks[future]
+            if future.exception() is not None:
+                print('%d generated an exception: %s' % (idx, future.exception()))
 
 
 if __name__ == "__main__":

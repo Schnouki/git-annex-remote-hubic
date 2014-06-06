@@ -16,7 +16,7 @@ Features
 - Authentication is done using OAuth 2.0: no need for your hubiC password!
 - Data integrity is checked using client-side and server-side MD5 checksums of
   your files
-- Written in Python 2 (only tested with 2.7, may work with 2.6)
+- Written in Python 3 (only tested with 3.4, should work with 3.3, may work with 3.2)
 - Uses the reputable
   [python-swiftclient](https://github.com/openstack/python-swiftclient) package
   to communicate with hubiC servers (official Python bindings from the OpenStack
@@ -29,8 +29,8 @@ Features
 Installation
 ------------
 
-1.  Install Python2 and setuptools (on Arch Linux: `pacman -S python2-setuptools`;
-    on Debian/Ubuntu: `apt-get install python-setuptools`).
+1.  Install Python3 and setuptools (on Arch Linux: `pacman -S python-setuptools`;
+    on Debian/Ubuntu: `apt-get install python3-setuptools`).
 
 2.  Clone this repository:
 
@@ -38,8 +38,7 @@ Installation
 
 3.  Install the package:
 
-        python2 setup.py install --user
-        # Use python on outdated distros such as Debian or Ubuntu
+        python3 setup.py install --user
 
 4.  Go to a repository you manage with git-annex, and initialize your new remote
     using the following commands as a starting point:
@@ -104,6 +103,23 @@ example from the webclient), or by running the same script again with the
 `--move` option:
 
     git-annex-remote-hubic-migrate --move old_path/to/data new_container_name new/path/to/data
+
+
+Hacking
+-------
+
+If you want to hack on this remote, feel free :)
+
+- Use `git annex --debug`. It saves lifes.
+- There are a few tests in the `test` directory; they only cover common use
+  cases.
+- If you wish to use the `swift` command to access your hubiC account, you can
+  have the remote dump the needed credentials to a file using an environment
+  variable:
+
+        export GIT_ANNEX_HUBIC_AUTH_FILE=/path/to/auth/file
+        source /path/to/auth/file
+        swift list
 
 
 License

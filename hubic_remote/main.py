@@ -17,7 +17,7 @@
 
 """git-annex special remote for hubiC"""
 
-import remote
+from . import remote
 
 def main():
     rem = remote.Remote()

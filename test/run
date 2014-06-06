@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -e
+
+DIR=$(dirname $0)
+BATS=$DIR/bats/bin/bats
+
+if [ ! -f $DIR/repo ]; then
+    git submodule update
+fi
+
+if [ ! -d $DIR/repo ]; then
+    $DIR/init-repo
+fi
+
+exec $BATS $DIR/basic.bats $DIR/corrupt.bats

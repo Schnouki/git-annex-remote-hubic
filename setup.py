@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 # Copyright (c) 2014 Thomas Jost
 #
@@ -20,7 +20,7 @@
 from setuptools import setup, find_packages
 
 setup(name="git-annex-remote-hubic",
-      version="0.2",
+      version="0.3",
       description="A git-annex special remote for hubiC",
       long_description=open("README.md", "r").read(),
       author="Thomas Jost",
@@ -29,12 +29,9 @@ setup(name="git-annex-remote-hubic",
       packages=find_packages(),
       install_requires=[
           "python-dateutil",
-          "python-swiftclient==1.9.0",
-          "rauth>=0.6",
+          "python-swiftclient>=2.1.0",
+          "rauth>=0.7",
       ],
-      extras_require = {
-          "multithread":  ["futures"],
-      },
       entry_points={
           "console_scripts": [
               "git-annex-remote-hubic = hubic_remote.main:main",
