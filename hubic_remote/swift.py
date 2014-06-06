@@ -19,6 +19,7 @@
 
 import functools
 import hashlib
+import io
 import os
 import os.path
 
@@ -27,18 +28,18 @@ from swiftclient.exceptions import ClientException
 
 DEFAULT_CHUNK_SIZE = 2**30  # 1 GB
 
-class ProgressFile(file):
+class ProgressFile(io.FileIO):
     """File wrapper that writes read/write progress to the remote"""
     def __init__(self, remote, *args, **kwds):
         self._remote = remote
-        super(ProgressFile, self).__init__(*args, **kwds)
+        super().__init__(*args, **kwds)
 
     def read(self, *args, **kwds):
         self._remote.send("PROGRESS %d" % self.tell())
-        return super(ProgressFile, self).read(*args, **kwds)
+        return super().read(*args, **kwds)
 
     def write(self, *args, **kwds):
-        ret = super(ProgressFile, self).write(*args, **kwds)
+        ret = super().write(*args, **kwds)
         self._remote.send("PROGRESS %d" % self.tell())
         return ret
 
@@ -163,7 +164,7 @@ class SwiftConnection(object):
                 status = self.conn.head_object(self.container, "path")
                 if status["content-type"] != "application/directory":
                     self.remote.fatal("Directory %s has type %s" % (path, status["content-type"]))
-            except ClientException, exc:
+            except ClientException as exc:
                 if exc.http_status != 404:
                     self.conn.put_object(self.container, path, None, content_type="application/directory")
 
@@ -217,7 +218,7 @@ class SwiftConnection(object):
                             self.conn.put_object(self.container, this_path,
                                                  contents=contents, content_length=chunk["size"],
                                                  etag=chunk["md5_digest"], headers=headers)
-                        except ClientException, exc:
+                        except ClientException as exc:
                             if exc.http_status == 401 and self.remote.swift_token_expired():
                                 # Retry!
                                 self.renew_connection()
@@ -233,7 +234,7 @@ class SwiftConnection(object):
         except KeyboardInterrupt:
             self.remote.send("TRANSFER-FAILURE STORE %s Interrupted by user" % key)
             raise
-        except Exception, exc:
+        except Exception as exc:
             self.remote.send("TRANSFER-FAILURE STORE %s %s" % (key, str(exc)))
 
 
@@ -291,7 +292,7 @@ class SwiftConnection(object):
             os.remove(filename)
             self.remote.send("TRANSFER-FAILURE RETRIEVE %s Interrupted by user" % key)
             raise
-        except Exception, exc:
+        except Exception as exc:
             os.remove(filename)
             self.remote.send("TRANSFER-FAILURE RETRIEVE %s %s" % (key, str(exc)))
             return
@@ -335,7 +336,7 @@ class SwiftConnection(object):
         except KeyboardInterrupt:
             self.remote.send("CHECKPRESENT-UNKNOWN %s Interrupted by user" % key)
             raise
-        except ClientException, exc:
+        except ClientException as exc:
             if exc.http_status == 404:
                 self.remote.send("CHECKPRESENT-FAILURE " + key)
             else:
@@ -354,7 +355,7 @@ class SwiftConnection(object):
                 self.remote.debug("Checking chunk %d" % (1 + len(chunks)))
                 try:
                     headers = self.conn.head_object(self.container, path)
-                except ClientException, exc:
+                except ClientException as exc:
                     if exc.http_status == 404:
                         break
                     else:
@@ -368,7 +369,7 @@ class SwiftConnection(object):
                 self.remote.debug("Removing chunk %d" % (len(chunks) - idx))
                 try:
                     self.conn.delete_object(self.container, chunk)
-                except ClientException, exc:
+                except ClientException as exc:
                     if exc.http_status == 404:
                         continue
                     else:
@@ -378,5 +379,5 @@ class SwiftConnection(object):
         except KeyboardInterrupt:
             self.remote.send("REMOVE-FAILURE %s Interrupted by user" % key)
             raise
-        except Exception, exc:
+        except Exception as exc:
             self.remote.send("REMOVE-FAILURE %s %s" % (key, str(exc)))

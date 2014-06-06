@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 # Copyright (c) 2014 Thomas Jost
 #
@@ -32,9 +32,6 @@ setup(name="git-annex-remote-hubic",
           "python-swiftclient>=2.1.0",
           "rauth>=0.7",
       ],
-      extras_require = {
-          "multithread":  ["futures"],
-      },
       entry_points={
           "console_scripts": [
               "git-annex-remote-hubic = hubic_remote.main:main",

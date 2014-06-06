@@ -17,10 +17,10 @@
 
 """hubiC authentication module"""
 
-import BaseHTTPServer
 import datetime
+import http.server
 import sys
-import urlparse
+import urllib.parse
 import webbrowser
 
 import dateutil.parser
@@ -82,9 +82,9 @@ class HubicAuth(object):
 
         # First step: open the authorization URL in a browser
         url = self.service.get_authorize_url(redirect_uri=REDIRECT_URI, response_type="code", scope="credentials.r")
-        print >>sys.stderr, "\nAn authentication tab should open in your browser. If it does not,"
-        print >>sys.stderr, "please go to the following URL:"
-        print >>sys.stderr, url
+        print("\nAn authentication tab should open in your browser. If it does not,", file=sys.stderr)
+        print("please go to the following URL:", file=sys.stderr)
+        print(url, file=sys.stderr)
         webbrowser.open_new_tab(url)
 
         # Start a simple webserver that will handle the redirect and extract the
@@ -105,7 +105,7 @@ class HubicAuth(object):
         }
         try:
             tokens = self.service.get_raw_access_token(data=data).json()
-        except Exception, exc:
+        except Exception as exc:
             self.remote.send("INITREMOTE-FAILURE " + str(exc))
             return
         self.refresh_token = tokens["refresh_token"]
@@ -129,7 +129,7 @@ class HubicAuth(object):
 
         try:
             self.refresh_swift_token()
-        except Exception, exc:
+        except Exception as exc:
             self.remote.send("PREPARE-FAILURE " + str(exc))
             return
         self.remote.send("PREPARE-SUCCESS")
@@ -212,23 +212,23 @@ class HubicAuth(object):
         return (self.swift_endpoint, self.swift_token)
 
 
-class RedirectServer(BaseHTTPServer.HTTPServer):
+class RedirectServer(http.server.HTTPServer):
     """A basic HTTP server that handles a single request to the OAuth redirection URL"""
     query = {}
 
-class RedirectHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class RedirectHandler(http.server.BaseHTTPRequestHandler):
     """A basic HTTP request handler that extracts relevant information from the OAuth redirection URL"""
 
     def do_GET(request):
         """Extract query string parameters from a URL and return a generic response"""
         query = request.path.split('?', 1)[-1]
-        query = dict(urlparse.parse_qsl(query))
+        query = dict(urllib.parse.parse_qsl(query))
         request.server.query = query
 
         request.send_response(200)
         request.send_header("Content-Type", "text/html")
         request.end_headers()
-        request.wfile.write("""<html>
+        request.wfile.write(b"""<html>
             <head><title>git-annex-remote-hubic authentication</title></head>
             <body><p>Authentication completed, you can now close this window.</p></body>
             </html>""")

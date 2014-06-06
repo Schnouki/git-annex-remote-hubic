@@ -20,8 +20,8 @@
 import errno
 import sys
 
-import auth
-import swift
+from . import auth
+from . import swift
 
 REMOTE_COST = 175  # Semi-expensive remote as per Config/Cost.hs
 
@@ -43,7 +43,7 @@ class Remote(object):
     def send(self, msg):
         """Send a message to git-annex"""
         def _closed():
-            print >>sys.stderr, "[hubic] git-annex has stopped, exiting."
+            print("[hubic] git-annex has stopped, exiting.", file=sys.stderr)
             sys.exit(1)
 
         if self.fout.closed:
@@ -52,7 +52,7 @@ class Remote(object):
         try:
             self.fout.write("%s\n" % msg)
             self.fout.flush()
-        except IOError, exc:
+        except IOError as exc:
             if exc.errno == errno.EPIPE:
                 _closed()
             else:
@@ -79,7 +79,7 @@ class Remote(object):
         """Wrapper for the command loop"""
         # Check that we're not running interactively
         if self.fin.isatty() or self.fout.isatty():
-            print >>sys.stderr, "Don't run this by yourself! Use git annex initremote type=external externaltype=hubic"
+            print("Don't run this by yourself! Use git annex initremote type=external externaltype=hubic", file=sys.stderr)
             sys.exit(1)
 
         # Run the real loop handling keyboard interrupts
@@ -122,7 +122,7 @@ class Remote(object):
                 subcommand, key, filename = line[1].split(None, 2)
                 try:
                     conn = swift.SwiftConnection(self)
-                except Exception, exc:
+                except Exception as exc:
                     self.send("TRANSFER-%s FAILURE %s %s" % (subcommand, key, str(exc)))
                     continue
 

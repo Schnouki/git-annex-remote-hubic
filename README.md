@@ -16,7 +16,7 @@ Features
 - Authentication is done using OAuth 2.0: no need for your hubiC password!
 - Data integrity is checked using client-side and server-side MD5 checksums of
   your files
-- Written in Python 2 (only tested with 2.7, may work with 2.6)
+- Written in Python 3 (only tested with 3.4, should work with 3.3, may work with 3.2)
 - Uses the reputable
   [python-swiftclient](https://github.com/openstack/python-swiftclient) package
   to communicate with hubiC servers (official Python bindings from the OpenStack
@@ -29,8 +29,8 @@ Features
 Installation
 ------------
 
-1.  Install Python2 and setuptools (on Arch Linux: `pacman -S python2-setuptools`;
-    on Debian/Ubuntu: `apt-get install python-setuptools`).
+1.  Install Python3 and setuptools (on Arch Linux: `pacman -S python-setuptools`;
+    on Debian/Ubuntu: `apt-get install python3-setuptools`).
 
 2.  Clone this repository:
 
@@ -38,8 +38,7 @@ Installation
 
 3.  Install the package:
 
-        python2 setup.py install --user
-        # Use python on outdated distros such as Debian or Ubuntu
+        python3 setup.py install --user
 
 4.  Go to a repository you manage with git-annex, and initialize your new remote
     using the following commands as a starting point:
