@@ -29,8 +29,8 @@ setup(name="git-annex-remote-hubic",
       packages=find_packages(),
       install_requires=[
           "python-dateutil",
-          "python-swiftclient==1.9.0",
-          "rauth>=0.6",
+          "python-swiftclient>=2.1.0",
+          "rauth>=0.7",
       ],
       extras_require = {
           "multithread":  ["futures"],
