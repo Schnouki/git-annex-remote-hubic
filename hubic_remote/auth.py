@@ -19,6 +19,8 @@
 
 import datetime
 import http.server
+import multiprocessing
+import os
 import sys
 import urllib.parse
 import webbrowser
@@ -36,6 +38,14 @@ def now():
     """Timezone-aware version of datetime.datetime.now"""
     return datetime.datetime.now(dateutil.tz.tzlocal())
 
+def _real_open_new_tab(url):
+    sys.stdout = sys.stderr = os.open(os.devnull, os.O_RDWR)
+    webbrowser.open_new_tab(url)
+
+def open_new_tab(url):
+    pro = multiprocessing.Process(target=_real_open_new_tab, args=(url,), name="webbrowser opener")
+    pro.start()
+    pro.join()
 
 class HubicAuth(object):
     """Handle authentication using the hubiC API"""
@@ -85,7 +95,7 @@ class HubicAuth(object):
         print("\nAn authentication tab should open in your browser. If it does not,", file=sys.stderr)
         print("please go to the following URL:", file=sys.stderr)
         print(url, file=sys.stderr)
-        webbrowser.open_new_tab(url)
+        open_new_tab(url)
 
         # Start a simple webserver that will handle the redirect and extract the
         # request code
