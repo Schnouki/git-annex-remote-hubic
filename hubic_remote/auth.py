@@ -19,8 +19,7 @@
 
 import datetime
 import http.server
-import multiprocessing
-import os
+import subprocess
 import sys
 import urllib.parse
 import webbrowser
@@ -38,14 +37,19 @@ def now():
     """Timezone-aware version of datetime.datetime.now"""
     return datetime.datetime.now(dateutil.tz.tzlocal())
 
-def _real_open_new_tab(url):
-    sys.stdout = sys.stderr = os.open(os.devnull, os.O_RDWR)
-    webbrowser.open_new_tab(url)
-
 def open_new_tab(url):
-    pro = multiprocessing.Process(target=_real_open_new_tab, args=(url,), name="webbrowser opener")
-    pro.start()
-    pro.join()
+    """Open a new web browser tab, making sure the browser doesn't write anything to
+    the standard output (as it's used by git-annex)
+    """
+    orig_popen = subprocess.Popen
+    def _silent_popen(*args, **kwargs):
+        kwargs["stdout"] = kwargs["stderr"] = subprocess.DEVNULL
+        return orig_popen(*args, **kwargs)
+    try:
+        subprocess.Popen = _silent_popen
+        webbrowser.open_new_tab(url)
+    finally:
+        subprocess.Popen = orig_popen
 
 class HubicAuth(object):
     """Handle authentication using the hubiC API"""
