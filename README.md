@@ -29,8 +29,11 @@ Features
 Installation
 ------------
 
-1.  Install Python3 and setuptools (on Arch Linux: `pacman -S python-setuptools`;
-    on Debian/Ubuntu: `apt-get install python3-setuptools`).
+1.  Install Python3 and setuptools ≥ 0.7 (on Arch Linux: `pacman -S
+    python-setuptools`; on Debian/Ubuntu: `apt-get install python3-setuptools`).
+    If setuptools ≥ 0.7 is not available, you can install distribute instead; if
+    distribute isn't available either, you should try to install setuptools in
+    your `$HOME` with `pip3 install --user --upgrade setuptools`.
 
 2.  Clone this repository:
 

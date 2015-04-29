@@ -19,6 +19,7 @@
 
 import datetime
 import http.server
+import subprocess
 import sys
 import urllib.parse
 import webbrowser
@@ -36,6 +37,19 @@ def now():
     """Timezone-aware version of datetime.datetime.now"""
     return datetime.datetime.now(dateutil.tz.tzlocal())
 
+def open_new_tab(url):
+    """Open a new web browser tab, making sure the browser doesn't write anything to
+    the standard output (as it's used by git-annex)
+    """
+    orig_popen = subprocess.Popen
+    def _silent_popen(*args, **kwargs):
+        kwargs["stdout"] = kwargs["stderr"] = subprocess.DEVNULL
+        return orig_popen(*args, **kwargs)
+    try:
+        subprocess.Popen = _silent_popen
+        webbrowser.open_new_tab(url)
+    finally:
+        subprocess.Popen = orig_popen
 
 class HubicAuth(object):
     """Handle authentication using the hubiC API"""
@@ -85,7 +99,7 @@ class HubicAuth(object):
         print("\nAn authentication tab should open in your browser. If it does not,", file=sys.stderr)
         print("please go to the following URL:", file=sys.stderr)
         print(url, file=sys.stderr)
-        webbrowser.open_new_tab(url)
+        open_new_tab(url)
 
         # Start a simple webserver that will handle the redirect and extract the
         # request code
