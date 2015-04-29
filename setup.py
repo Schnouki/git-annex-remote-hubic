@@ -20,7 +20,7 @@
 from setuptools import setup, find_packages
 
 setup(name="git-annex-remote-hubic",
-      version="0.3",
+      version="0.3.1",
       description="A git-annex special remote for hubiC",
       long_description=open("README.md", "r").read(),
       author="Thomas Jost",
