@@ -123,7 +123,7 @@ class SwiftConnection(object):
                     dump.write('export OS_AUTH_TOKEN="%(auth_token)s"\n'
                                'export OS_STORAGE_URL="%(object_storage_url)s"\n' % options)
 
-            self.conn = swiftclient.client.Connection(os_options=options, auth_version=2)
+            self.conn = swiftclient.client.Connection(os_options=options, auth_version=2, timeout=60)
 
         # Store new things in the cache
         SwiftConnection.cache = {
