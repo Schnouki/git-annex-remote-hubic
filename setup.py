@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2014 Thomas Jost
+# Copyright (c) 2014-2016 Thomas Jost and the Contributors
 #
 # This file is part of git-annex-remote-hubic.
 #
