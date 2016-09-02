@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2014 Thomas Jost
+# Copyright (c) 2014-2016 Thomas Jost and the Contributors
 #
 # This file is part of git-annex-remote-hubic.
 #
@@ -20,7 +20,7 @@
 from setuptools import setup, find_packages
 
 setup(name="git-annex-remote-hubic",
-      version="0.3.1",
+      version="0.3.2",
       description="A git-annex special remote for hubiC",
       long_description=open("README.md", "r").read(),
       author="Thomas Jost",
