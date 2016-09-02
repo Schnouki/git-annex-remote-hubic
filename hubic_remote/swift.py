@@ -203,7 +203,7 @@ class SwiftConnection(object):
 
                     # Chunk metadata
                     headers = {
-                        "x-object-meta-annex-chunks": len(chunks),
+                        "x-object-meta-annex-chunks": str(len(chunks)),
                         "x-object-meta-annex-global-md5": md5_digest,
                     }
                     if idx < len(chunks) - 1:
