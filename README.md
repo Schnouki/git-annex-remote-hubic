@@ -1,3 +1,16 @@
+UNMAINTAINED PROJECT
+====================
+
+**THIS PROJECT IS NOT MAINTAINED ANYMORE!**
+
+Due to performance and reliability issues, I stopped using hubiC, migrated 
+all my data out of it, and closed my account. As a consequence, I can no
+longer maintain this project.
+
+If anyone is interested in taking over, please get in touch and we'll see
+if I can transfer the repository!
+
+
 hubiC remote for git-annex
 ==========================
 
